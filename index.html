@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111111" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Collectible Tracker" />
+  <title>Collectible Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #111111;
+      --surface: #1c1c1c;
+      --surface2: #252525;
+      --border: #333333;
+      --text: #eeeeee;
+      --text-muted: #777777;
+      --accent: #e8a030;
+      --accent-dim: #2a1c06;
+      --green: #22c55e;
+      --green-dim: #0d2e16;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .game-selector {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      -webkit-appearance: none;
+    }
+
+    .category-badge {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Overall progress ── */
+    .progress-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .progress-bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--surface2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    .progress-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 52px;
+      text-align: right;
+    }
+
+    /* ── Main content ── */
+    main {
+      padding: 12px 12px 80px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── Mission group ── */
+    .mission-group {
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .mission-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--surface);
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .mission-header:active { background: var(--surface2); }
+
+    .mission-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .mission-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .mission-mini-bar {
+      width: 48px;
+      height: 5px;
+      background: var(--surface2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mission-mini-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .chevron {
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+
+    .mission-group.collapsed .chevron { transform: rotate(-90deg); }
+
+    .mission-items {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mission-group.collapsed .mission-items { display: none; }
+
+    /* ── Collectible card ── */
+    .item-card {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      transition: background 0.15s;
+    }
+
+    .item-card.collected { background: #0d1f14; }
+
+    .check-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .check-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: transparent;
+      font-size: 14px;
+    }
+
+    .item-card.collected .check-btn {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .item-body {
+      flex: 1;
+      padding: 12px 12px 12px 0;
+    }
+
+    .item-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .item-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .item-card.collected .item-name { color: var(--green); }
+
+    .item-effect {
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 4px;
+      font-style: italic;
+    }
+
+    .item-location {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .rally-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+
+    /* ── Expand/collapse info ── */
+    .expand-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 4px 0 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .expand-btn:active { color: var(--accent); }
+
+    .item-location { display: none; }
+    .item-location.visible { display: block; }
+
+    /* ── Bonus section ── */
+    .bonus-section {
+      margin-bottom: 10px;
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .bonus-header {
+      padding: 10px 14px;
+      background: var(--accent-dim);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .bonus-item {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .bonus-item-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .bonus-item-effect { font-size: 12px; color: var(--text-muted); }
+
+    /* ── Reset button ── */
+    .fab {
+      position: fixed;
+      bottom: 20px;
+      right: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .fab:active { background: var(--border); }
+
+    /* ── Empty state ── */
+    .done-banner {
+      display: none;
+      text-align: center;
+      padding: 24px;
+      color: var(--green);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .done-banner.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <select class="game-selector" id="gameSelector" onchange="loadGame(this.value)">
+      <option value="halo_ce_skulls">Halo: Campaign Evolved</option>
+    </select>
+    <div class="category-badge" id="categoryBadge">Skulls</div>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="overallFill" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="overallLabel">0 / 0</div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="done-banner" id="doneBanner">🎉 All skulls collected!</div>
+</main>
+
+<button class="fab" onclick="confirmReset()">↺ Reset</button>
+
+<script>
+// ────────────────────────────────────────────────
+// DATA — extensible: add more games/categories here
+// ────────────────────────────────────────────────
+
+const GAMES = {
+  halo_ce_skulls: {
+    name: "Halo: Campaign Evolved",
+    category: "Skulls",
+    bonusNote: "Auto-unlocked after collecting your first 3 skulls:",
+    bonusItems: [
+      { name: "Adaptation", effect: "Randomizes the enemy factions present in the mission." },
+      { name: "Armistice",  effect: "Enemy factions never fight one another." },
+      { name: "Reload",     effect: "Randomizes the pre-placed weapons in the mission." },
+    ],
+    missions: [
+      {
+        name: "Pillar of Autumn",
+        items: [
+          {
+            id: "poa_speed_limit",
+            name: "Speed Limit",
+            effect: "Disables sprint.",
+            rallyPoint: "Alpha",
+            location: "Exit the cryo pod, go right into the alcove with the cryo tank. Climb the slope, jump on top of it, then jump onto the raised platform above the door to your right."
+          },
+          {
+            id: "poa_magnified",
+            name: "Magnified",
+            effect: "60-round magazines for the AR are standard issue.",
+            rallyPoint: "Alpha",
+            location: "After the Elite jumpscare, continue down the corridor past the marines at the barricade. In the room with weapon racks, the skull sits on the racks to your left."
+          },
+          {
+            id: "poa_perspective",
+            name: "Perspective",
+            effect: "Changes the player camera to third-person.",
+            rallyPoint: "Bravo",
+            location: "After the bridge cutscene, head back inside and find the two pilots at the front of the cockpit behind Captain Keyes. Drop down into the space below them."
+          },
+        ]
+      },
+      {
+        name: "Halo",
+        items: [
+          {
+            id: "halo_grunt_funeral",
+            name: "Grunt Funeral",
+            effect: "Grunts die in a blaze of plasma.",
+            rallyPoint: "Charlie",
+            location: "After emerging from underground with the Warthog, follow the trail left to a Forerunner structure where you rescue marines underground. Climb the stairs to the top level — the skull is on the middle section halfway up where the pillar of light emerges. Requires a grenade jump to reach."
+          },
+          {
+            id: "halo_give_and_take",
+            name: "Give and Take",
+            effect: "Firing your weapon drains your shield; dealing damage to enemies recharges it.",
+            rallyPoint: "Charlie",
+            location: "From the Warthog exit point, follow the river on the left until it splits. Follow it right into a cave. Past some green fireflies, the skull hovers above a rock to your left."
+          },
+          {
+            id: "halo_floor_is_lava",
+            name: "Floor is Lava",
+            effect: "Take continuous damage whenever touching the ground.",
+            rallyPoint: "Charlie",
+            location: "Head right to the crash site with big rocks and Jackal snipers. Go up to the top of the grassy area near the marine sniper, jump right onto the next grassy rock, then drop down onto the big rock in the centre."
+          },
+        ]
+      },
+      {
+        name: "The Truth and Reconciliation",
+        items: [
+          {
+            id: "ttr_iron",
+            name: "Iron",
+            effect: "Dying in co-op resets to last checkpoint; dying solo restarts the level.",
+            rallyPoint: "Alpha",
+            location: "Near the grav lift leading up to the ship, head to the other side and find the light on the ground illuminating a cactus and tree by the cliff edge. Step onto the rock to the right and look down — the skull is on a lower ledge. Jump down to grab it (you'll need to kill yourself to return)."
+          },
+          {
+            id: "ttr_endurance_spec",
+            name: "Endurance Spec",
+            effect: "Makes UNSC vehicles indestructible.",
+            rallyPoint: "Bravo",
+            location: "Upper level of the hangar you let the marines into. From the far end of the walkway, look back across the hangar — jump between crates and pillars to reach it at the far end. Strongly recommend grabbing Acrophobia from Silent Cartographer first, as it lets you fly briefly."
+          },
+          {
+            id: "ttr_foreign",
+            name: "Foreign",
+            effect: "Players cannot use weapons from another faction.",
+            rallyPoint: "Bravo",
+            location: "In the hangar where the Covenant dropship flies away. Head to the far right corner — there's a locked door. Wait for reinforcements to enter and open it, then head inside and grab the skull on the left."
+          },
+        ]
+      },
+      {
+        name: "The Silent Cartographer",
+        items: [
+          {
+            id: "sc_bandana",
+            name: "Bandana",
+            effect: "Infinite ammo and grenades. (Disables some achievements.)",
+            rallyPoint: "Alpha",
+            location: "After clearing the landing zone and circling to the Forerunner structure entrance, find the cave just to the right of it. The skull sits in the sandy, sunny centre of the cave."
+          },
+          {
+            id: "sc_acrophobia",
+            name: "Acrophobia",
+            effect: "The Corps: Now issuing rifles AND wings… (Lets you fly briefly. Disables some achievements.)",
+            rallyPoint: "Bravo",
+            location: "In the plaza with the two Hunter enemies where you open the security door. Climb the sloping structure in the centre from the right side and ascend to the far end."
+          },
+          {
+            id: "sc_hip_fire",
+            name: "Hip Fire",
+            effect: "All weapon zoom functionality is disabled.",
+            rallyPoint: "Charlie",
+            location: "After entering the main facility and defeating the two Hunters, head down the staircase with a hologram in the centre. Look over the edge directly below you — spot the skull on the right side. Drop down to grab it."
+          },
+        ]
+      },
+      {
+        name: "Assault on the Control Room",
+        items: [
+          {
+            id: "acr_iwhbyd",
+            name: "IWHBYD",
+            effect: "It would have been your dialogue. (Unlocks rare dialogue.)",
+            rallyPoint: "Bravo",
+            location: "After getting the Scorpion tank, drive through the valley and tunnels to the bridge with turrets. At the other end, turn left to the icy wall. Jump on top of your Scorpion and use it to reach the cave halfway up the wall."
+          },
+          {
+            id: "acr_angry",
+            name: "Angry",
+            effect: "Enemies fire their weapons faster and more frequently.",
+            rallyPoint: "Charlie",
+            location: "At the entrance to the Control Center Ziggurat, look for a Forerunner ravine structure with bridge-like struts along the top. The skull is on the third strut back towards the cliff."
+          },
+          {
+            id: "acr_cowbell",
+            name: "Cowbell",
+            effect: "Physics mass of objects is reduced — they're more easily displaced.",
+            rallyPoint: "Echo",
+            location: "On the bridge outside where two Banshees are parked (Cortana tells you to commandeer one). Walk to about halfway along the bridge where it crosses the Forerunner structure below, and drop down on the left side. The skull is wedged in a pile of snow in that channel."
+          },
+        ]
+      },
+      {
+        name: "343 Guilty Spark",
+        items: [
+          {
+            id: "gs_fog",
+            name: "Fog",
+            effect: "Motion tracker is disabled.",
+            rallyPoint: "Alpha",
+            location: "After the crashed Pelican, find the Covenant drop ship stuck in a tree. Turn left and climb the slope, then turn right at the top. Hop over the rocks past the tree and a Flood stalk — the skull is on a rock to your left overlooking the fallen tree you cross to continue."
+          },
+          {
+            id: "gs_thats_just_wrong",
+            name: "That's Just… Wrong",
+            effect: "Enemies have increased awareness of the player.",
+            rallyPoint: "Bravo",
+            location: "After heading through the initial Forerunner rooms, you'll find a marine who's gone crazy and tries to shoot you with a magnum. Kill him — he drops the skull."
+          },
+          {
+            id: "gs_they_come_back",
+            name: "They Come Back",
+            effect: "Flood Combat Forms reanimated by Infection Forms are much more dangerous.",
+            rallyPoint: "Charlie",
+            location: "Near the end of the mission, after taking an elevator up, you defend a tower door against Flood while waiting for evacuation. Instead of fighting, head right of the big tower and run until you find a fallen tree resting against a ledge. Climb it and jump onto the left side of the rock."
+          },
+        ]
+      },
+      {
+        name: "The Library",
+        items: [
+          {
+            id: "lib_tilt",
+            name: "Tilt",
+            effect: "Enhances both positive and negative damage multipliers (e.g. plasma does more vs. shields but less vs. health).",
+            rallyPoint: "Alpha",
+            location: "After Guilty Spark leaves, go through a short tunnel. He reappears with sentinels to help you. Turn right and jump onto the sloping strut next to the door you came through — walk up to the top."
+          },
+          {
+            id: "lib_pop",
+            name: "Pop",
+            effect: "Shooting Flood in their weak point causes them to explode.",
+            rallyPoint: "Bravo",
+            location: "After defending the lift, circle around to the next door where Guilty Spark waits. Defend the door as he unlocks it. Turn around — behind you on the far wall is a pedestal a little way up. Climb the sloping strut, hop across the blocks, then jump to the pedestal."
+          },
+          {
+            id: "lib_famine",
+            name: "Famine",
+            effect: "Weapons dropped by enemies contain half the ammo.",
+            rallyPoint: "Charlie",
+            location: "At the start of the fourth section, when you arrive at the bottom of the third big elevator, go straight ahead, down the stairs, and turn left before you reach the sentinel beam. The skull is in a small alcove."
+          },
+        ]
+      },
+      {
+        name: "Two Betrayals",
+        items: [
+          {
+            id: "tb_tough_luck",
+            name: "Tough Luck",
+            effect: "Enemies always go berserk, roll constantly, and rarely flee.",
+            rallyPoint: "Alpha",
+            location: "Exit the Halo control centre and descend to the Banshee. Fly it back up to the large crest structure sticking out in front of the light pillar above the control centre. Time jumping out of your Banshee to land on the platform and grab the skull."
+          },
+          {
+            id: "tb_black_eye",
+            name: "Black Eye",
+            effect: "Your shields only recharge when you melee enemies.",
+            rallyPoint: "Charlie",
+            location: "After destroying the first conduit, you emerge into the bottom of the valley. Three bridge-like arches are ahead — cross the middle one and head right. The skull is on a pile of snow amidst the Flood growths."
+          },
+          {
+            id: "tb_mythic",
+            name: "Mythic",
+            effect: "Enemies have increased health. Also unlocks LASO mode.",
+            rallyPoint: "Charlie",
+            location: "Fly to the platform with Banshees and two wall doors. Activate the terminal on the platform, then go through the door OPPOSITE to the objective. Clear all enemies and activate each terminal to open the next door. Defeat all enemies in the final room — the skull spawns in the central pillar structure."
+          },
+        ]
+      },
+      {
+        name: "Keyes",
+        items: [
+          {
+            id: "key_catch",
+            name: "Catch",
+            effect: "Enemies throw and drop more grenades.",
+            rallyPoint: "Alpha",
+            location: "⚠️ Requires Heroic difficulty. Timed — will despawn after a few minutes. Rush through the first section to the grav lift (use optical camo). Defeat the marked enemies on the lift platform, stand in the centre facing away from where you came, and hold X on controller as you rise to catch the skull just before the top. Co-op recommended."
+          },
+          {
+            id: "key_blind",
+            name: "Blind",
+            effect: "HUD and weapons do not appear on screen.",
+            rallyPoint: "Bravo",
+            location: "After boarding the ship, enter the upper level of the bay with ghosts and Wraiths. Drop down and find the open doorway at the far end with a destroyed Wraith blocking a passage. Grenade the debris out of the way and head up the corridor — the skull is by the locked door on the left."
+          },
+          {
+            id: "key_pinata",
+            name: "Piñata",
+            effect: "Punching enemies makes them drop inert grenades.",
+            rallyPoint: "Charlie",
+            location: "After the Keyes cutscene, turn around and melee the Flood growth he's in several times until the skull drops out."
+          },
+        ]
+      },
+      {
+        name: "The Maw",
+        items: [
+          {
+            id: "maw_stowed_reload",
+            name: "Stowed Reload",
+            effect: "Weapons continue to reload while stowed.",
+            rallyPoint: "Bravo",
+            location: "After Guilty Spark stops the countdown at the bridge, continue through the ship to a cryo pod bay (four pods in the centre). The skull is in the back left corner on top of a pillar — jump to it from the walkway."
+          },
+          {
+            id: "maw_boom",
+            name: "Boom",
+            effect: "Explosion radius is increased 2×.",
+            rallyPoint: "Bravo",
+            location: "In the engine bay: go right up the slope, along the platform, right through the door, up to the next floor, left through the doorway, up again. Go straight, turn right to the far terminal, jump across to the lower platform, then turn left and drop between the pillar and wall. (Video recommended.)"
+          },
+          {
+            id: "maw_thunderstorm",
+            name: "Thunderstorm",
+            effect: "Upgrades the rank of most enemies.",
+            rallyPoint: "Charlie",
+            location: "During the final Warthog escape, continue along the main track to the winding tunnel with pillars. Pass the first vent shortcut on your right, then take the second vent shortcut. Go about halfway down, get out, and look right — the skull is on the ground."
+          },
+        ]
+      },
+      {
+        name: "Boarding Action",
+        items: [
+          {
+            id: "ba_malfunction",
+            name: "Malfunction",
+            effect: "Upon respawn, a random element of your HUD no longer appears.",
+            rallyPoint: "Alpha",
+            location: "After meeting Johnson and fighting the two Hunters near the grav lift, head right down the walkway Johnson came from. Follow it down the stairs, past the ship on the left, through the door, right past the turret onto the walkway — the skull overlooks the room with the dropship where you started."
+          },
+          {
+            id: "ba_johnny_ammo_seed",
+            name: "Johnny Ammo Seed",
+            effect: "When reloading, you lose the ammo remaining in the discarded clip.",
+            rallyPoint: "Bravo",
+            location: "Progress into the training room with gold energy-sword Elites. Climb the stairs at the far end, follow the platform around to the opposite side, head left through the tunnels to emerge on the third floor of the previous white and gold room. The skull is on the walkway ahead — carry straight on, then turn right."
+          },
+          {
+            id: "ba_leadhead",
+            name: "Leadhead",
+            effect: "Headshots no longer provide extra damage or instant kills.",
+            rallyPoint: "Delta",
+            location: "After meeting the Prophet and surviving the ambush, you'll reach a small room with a grav lift, fighting waves of Brutes and Elites. Don't take the lift — head through the door on the left side of the room."
+          },
+        ]
+      },
+      {
+        name: "The Most Dangerous Game",
+        items: [
+          {
+            id: "mdg_temperamental",
+            name: "Temperamental",
+            effect: "Allies attack the player more quickly if the player kills a friendly.",
+            rallyPoint: "Alpha",
+            location: "Break a golden Elite's shield three times throughout the level: (1) after meeting Williams near the Jackal snipers on the right ledge; (2) behind the Wraith in the Covenant base area; (3) outside after freeing prisoners from the cell block, he's up and to the left. Kill all enemies — the skull spawns on the central podium."
+          },
+          {
+            id: "mdg_recession",
+            name: "Recession",
+            effect: "Every shot expends twice the normal amount of ammo.",
+            rallyPoint: "Bravo",
+            location: "Facing the Wraith in the Covenant base, turn around. Look at the door with two torches on either side — shoot the fuel barrels inside each torch to blow them up, opening the door. The skull is inside."
+          },
+          {
+            id: "mdg_ghost",
+            name: "Ghost",
+            effect: "Enemies no longer flinch when taking fire.",
+            rallyPoint: "Charlie",
+            location: "After crossing the gravity bridge (Chief mentions not being able to choose who we are), the door opens to the next area with Elites ahead. The skull is above you on the left torch above the door. Climb around the tree to the left, hop onto the tree, and get onto the cliff where the skull is."
+          },
+        ]
+      },
+      {
+        name: "Heavy Burden",
+        items: [
+          {
+            id: "hb_eyepatch",
+            name: "Eyepatch",
+            effect: "All auto-aim is disabled for all weapons.",
+            rallyPoint: "Alpha",
+            location: "After fighting the Hunters in the alien plant room, continue until you reach a bridge across a chasm with a smaller bridge off to the left (two Elites come running along it). Head through the door on your left, go along the smaller bridge to the door at the far end — the skull is to your left."
+          },
+          {
+            id: "hb_grunt_birthday_party",
+            name: "Grunt Birthday Party",
+            effect: "Grunt headshots produce legendary celebrations.",
+            rallyPoint: "Bravo",
+            location: "After descending from the ship bridge to meet Williams, pass through previously-visited rooms until you reach a large room with plants. Descending a short stairs with a torch on the left, spot a rock-like natural structure with the skull on top. Jump to the central platform, then jump up to grab it."
+          },
+          {
+            id: "hb_efficient",
+            name: "Efficient",
+            effect: "Enemies killed while the player is at full health drop more ammo.",
+            rallyPoint: "Charlie",
+            location: "After reactivating the power on the moving platform, continue under the bridge into the next room. Jump off the platform and run to the far left corner to grab the skull before the timeout countdown kills you."
+          },
+        ]
+      },
+    ]
+  }
+};
+
+// ────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────
+
+let currentGameKey = "halo_ce_skulls";
+let collected = {};
+
+function storageKey(gameKey) { return `tracker_collected_${gameKey}`; }
+
+function loadCollected(gameKey) {
+  try {
+    const raw = localStorage.getItem(storageKey(gameKey));
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
+function saveCollected(gameKey) {
+  try {
+    localStorage.setItem(storageKey(gameKey), JSON.stringify(collected));
+  } catch(e) {}
+}
+
+// ────────────────────────────────────────────────
+// RENDER
+// ────────────────────────────────────────────────
+
+function loadGame(gameKey) {
+  currentGameKey = gameKey;
+  collected = loadCollected(gameKey);
+  renderGame();
+}
+
+function renderGame() {
+  const game = GAMES[currentGameKey];
+  const main = document.getElementById("main");
+  const badge = document.getElementById("categoryBadge");
+  badge.textContent = game.category;
+
+  // Count totals
+  const allItems = game.missions.flatMap(m => m.items);
+  const total = allItems.length;
+  const done  = allItems.filter(i => collected[i.id]).length;
+
+  // Overall progress
+  const pct = total ? (done / total * 100) : 0;
+  document.getElementById("overallFill").style.width = pct + "%";
+  document.getElementById("overallLabel").textContent = `${done} / ${total}`;
+
+  const doneBanner = document.getElementById("doneBanner");
+  doneBanner.classList.toggle("visible", done === total && total > 0);
+
+  // Build HTML
+  let html = "";
+
+  // Bonus items
+  if (game.bonusItems && game.bonusItems.length) {
+    html += `<div class="bonus-section">
+      <div class="bonus-header">✦ ${game.bonusNote}</div>`;
+    for (const b of game.bonusItems) {
+      html += `<div class="bonus-item">
+        <div class="bonus-item-name">${b.name}</div>
+        <div class="bonus-item-effect">${b.effect}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Missions
+  for (const mission of game.missions) {
+    const mTotal = mission.items.length;
+    const mDone  = mission.items.filter(i => collected[i.id]).length;
+    const mPct   = mTotal ? (mDone / mTotal * 100) : 0;
+    const allCollected = mDone === mTotal;
+
+    html += `<div class="mission-group" id="mission_${sanitize(mission.name)}">
+      <div class="mission-header" onclick="toggleMission('${sanitize(mission.name)}')">
+        <span class="mission-name">${mission.name}</span>
+        <span class="mission-count">${mDone}/${mTotal}</span>
+        <div class="mission-mini-bar"><div class="mission-mini-fill" style="width:${mPct}%"></div></div>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="mission-items">`;
+
+    for (const item of mission.items) {
+      const isCollected = !!collected[item.id];
+      html += `<div class="item-card${isCollected ? " collected" : ""}" id="card_${item.id}">
+        <div class="check-col" onclick="toggleItem('${item.id}')">
+          <div class="check-btn">${isCollected ? "✓" : ""}</div>
+        </div>
+        <div class="item-body">
+          <div class="item-top">
+            <span class="item-name">${item.name}</span>
+            ${item.rallyPoint ? `<span class="rally-badge">RP ${item.rallyPoint}</span>` : ""}
+          </div>
+          <div class="item-effect">${item.effect}</div>
+          <button class="expand-btn" onclick="toggleLocation('${item.id}')">
+            <span id="expandIcon_${item.id}">▸</span> Location
+          </button>
+          <div class="item-location" id="loc_${item.id}">${item.location}</div>
+        </div>
+      </div>`;
+    }
+
+    html += `</div></div>`;
+  }
+
+  main.innerHTML = `<div class="done-banner${done === total && total > 0 ? " visible" : ""}" id="doneBanner">🎉 All ${game.category.toLowerCase()} collected!</div>` + html;
+}
+
+function sanitize(str) { return str.replace(/[^a-zA-Z0-9]/g, "_"); }
+
+function toggleItem(id) {
+  collected[id] = !collected[id];
+  saveCollected(currentGameKey);
+
+  const card = document.getElementById("card_" + id);
+  const btn  = card.querySelector(".check-btn");
+
+  card.classList.toggle("collected", collected[id]);
+  btn.textContent = collected[id] ? "✓" : "";
+
+  // Update mission mini bar
+  const game = GAMES[currentGameKey];
+  for (const mission of game.missions) {
+    if (mission.items.find(i => i.id === id)) {
+      const mTotal = mission.items.length;
+      const mDone  = mission.items.filter(i => collected[i.id]).length;
+      const mPct   = mTotal ? (mDone / mTotal * 100) : 0;
+      const group  = document.getElementById("mission_" + sanitize(mission.name));
+      if (group) {
+        group.querySelector(".mission-count").textContent = `${mDone}/${mTotal}`;
+        group.querySelector(".mission-mini-fill").style.width = mPct + "%";
+      }
+      break;
+    }
+  }
+
+  // Update overall
+  const allItems = game.missions.flatMap(m => m.items);
+  const total = allItems.length;
+  const done  = allItems.filter(i => collected[i.id]).length;
+  const pct   = total ? (done / total * 100) : 0;
+  document.getElementById("overallFill").style.width = pct + "%";
+  document.getElementById("overallLabel").textContent = `${done} / ${total}`;
+
+  const doneBanner = document.getElementById("doneBanner");
+  if (doneBanner) doneBanner.classList.toggle("visible", done === total && total > 0);
+}
+
+function toggleLocation(id) {
+  const loc  = document.getElementById("loc_" + id);
+  const icon = document.getElementById("expandIcon_" + id);
+  const open = loc.classList.toggle("visible");
+  icon.textContent = open ? "▾" : "▸";
+}
+
+function toggleMission(name) {
+  const group = document.getElementById("mission_" + name);
+  group.classList.toggle("collapsed");
+}
+
+function confirmReset() {
+  if (confirm("Reset all progress for this game?")) {
+    collected = {};
+    saveCollected(currentGameKey);
+    renderGame();
+  }
+}
+
+// ── Boot ──
+loadGame(currentGameKey);
+</script>
+</body>
+</html>
